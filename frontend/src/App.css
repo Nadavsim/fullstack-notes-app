@@ -1,0 +1,110 @@
+/* 1. Global Font Family & Dark Theme Background */
+body {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  background-color: #121212; /* Deep dark background */
+  color: #e0e0e0; /* Light gray text for readability */
+}
+
+/* Center the main title */
+h1 {
+  text-align: center;
+  margin-top: 30px;
+  color: #ffffff; /* Bright white for the main header */
+}
+
+/* Constrain the width */
+.notes-container {
+  max-width: 800px;
+  margin: 0 auto; 
+  padding: 20px;
+}
+
+/* 2. Note Styling: Visible background, padding, spacing */
+.note {
+  background-color: #1e1e1e; /* Distinct card background, lighter than the body */
+  padding: 20px;
+  margin-bottom: 20px; 
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Heavier shadow for depth in dark mode */
+  border: 1px solid #333333; /* Subtle border to separate the cards */
+}
+
+/* Accent color for note titles */
+.note h2 {
+  margin-top: 0;
+  color: #61dafb; /* "React Blue" - a great vibrant accent for dark themes */
+}
+
+/* 3. Pagination Styling: Flexbox and Centering */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px; 
+  margin: 30px 0 50px 0;
+}
+
+/* Button Styling */
+/* The Button Container */
+.pagination-container button {
+  position: relative;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 16px;
+  border-radius: 0.5em;
+  cursor: pointer;
+  border: none;
+  /* The hidden gradient that gets revealed! (Changed to React Blue) */
+  background: linear-gradient(to right, #0056b3, #61dafb);
+  color: ghostwhite;
+  overflow: hidden;
+  padding: 0; /* Remove default padding so the span can handle it */
+  min-width: 45px; /* Keeps the number buttons from looking too skinny */
+}
+
+/* The Text Wrapper (Keeps text on top of the animation) */
+.pagination-container button span {
+  position: relative;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 15px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* The Sliding Block */
+.pagination-container button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #2c3e50; /* Our dark theme slate blue base */
+  width: 120%;
+  height: 100%;
+  z-index: 0;
+  transform: skew(30deg);
+  transition: transform 0.4s cubic-bezier(0.3, 1, 0.8, 1);
+}
+
+/* The Hover Animation! (Slides the block out of the way) */
+.pagination-container button:hover:not(:disabled)::before {
+  transform: translate3d(100%, 0, 0);
+}
+
+/* Keep the active page button permanently illuminated */
+.pagination-container button.active-btn::before {
+  transform: translate3d(100%, 0, 0);
+}
+
+/* The Click 'Squish' Effect */
+.pagination-container button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* The Disabled State */
+.pagination-container button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
