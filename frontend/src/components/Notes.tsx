@@ -5,9 +5,15 @@ import axios from 'axios';
 
 interface NoteProps {
   note: NoteType;
+  currentUser?: { 
+    name: string;
+    email: string;
+    username: string;
+  } | null;
 }
 
-const Note = ({ note }: NoteProps) => {
+// 1. Destructure currentUser here
+const Note = ({ note, currentUser }: NoteProps) => {
   const context = useContext(NoteContext);
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(note.content);
@@ -15,11 +21,14 @@ const Note = ({ note }: NoteProps) => {
   if (!context) return null;
   const { dispatch } = context;
 
+  // 2. The Ownership Check: true ONLY if logged in and emails match
+  const isOwner = currentUser && note.author && currentUser.email === note.author.email;
+
   // --- Action Handlers ---
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:3001/notes/${note._id}`);
-      dispatch({ type: 'DELETE_NOTE', payload: note._id });
+      await axios.delete(`http://localhost:3001/notes/${note.id}`);
+      dispatch({ type: 'DELETE_NOTE', payload: note.id });
       dispatch({ type: 'SET_NOTIFICATION', payload: 'Note deleted' });
     } catch (error) {
       console.error('Error deleting note:', error);
@@ -27,14 +36,13 @@ const Note = ({ note }: NoteProps) => {
   };
 
   const handleUpdate = async () => {
-    // Edge Case: Prevent updating a note to be empty
     if (!content.trim()) {
       alert("Note content cannot be empty.");
-      return; // Stop execution here
+      return; 
     }
 
     try {
-      const res = await axios.put(`http://localhost:3001/notes/${note._id}`, { ...note, content });
+      const res = await axios.put(`http://localhost:3001/notes/${note.id}`, { ...note, content });
       dispatch({ type: 'UPDATE_NOTE', payload: res.data });
       dispatch({ type: 'SET_NOTIFICATION', payload: 'Note updated' });
       setIsEditing(false);
@@ -45,21 +53,21 @@ const Note = ({ note }: NoteProps) => {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    setContent(note.content); // Revert changes if cancelled
+    setContent(note.content); 
   };
 
   // --- Sub-renders ---
   const renderEditControls = () => (
     <>
       <textarea 
-        data-testid={`text_input-${note._id}`} 
+        data-testid={`text_input-${note.id}`} 
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
-      <button data-testid={`text_input_save-${note._id}`} onClick={handleUpdate}>
+      <button data-testid={`text_input_save-${note.id}`} onClick={handleUpdate}>
         Save
       </button>
-      <button data-testid={`text_input_cancel-${note._id}`} onClick={handleCancelEdit}>
+      <button data-testid={`text_input_cancel-${note.id}`} onClick={handleCancelEdit}>
         Cancel
       </button>
     </>
@@ -67,20 +75,27 @@ const Note = ({ note }: NoteProps) => {
 
   // --- Main Render ---
   return (
-    <div className="note" data-testid={note._id}>
+    <div className="note" data-testid={note.id}>
       <h2>{note.title}</h2>
-      <small>By {note.author?.name}</small>
-      {note.content}
-      <button data-testid={`delete-${note._id}`} onClick={handleDelete}>
-        Delete
-      </button>
+      {/* Fallback to 'Guest' if author is null */}
+      <small>By {note.author?.name || 'Guest'}</small>
+      <p>{note.content}</p>
 
-      {isEditing ? (
-        renderEditControls()
-      ) : (
-        <button data-testid={`edit-${note._id}`} onClick={() => setIsEditing(true)}>
-          Edit
-        </button>
+      {/* 3. Wrap the action buttons so they only render for the owner */}
+      {isOwner && (
+        <div className="note-actions">
+          <button data-testid={`delete-${note.id}`} onClick={handleDelete}>
+            Delete
+          </button>
+
+          {isEditing ? (
+            renderEditControls()
+          ) : (
+            <button data-testid={`edit-${note.id}`} onClick={() => setIsEditing(true)}>
+              Edit
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

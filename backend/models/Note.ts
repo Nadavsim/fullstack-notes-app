@@ -14,10 +14,26 @@ export interface INote extends Document {
 const noteSchema: Schema = new Schema({
     title: { type: String, required: true },
     author: {
-    name: { type: String },
-    email: { type: String }
-    },
-    content: { type: String, required: true }
+      type: {
+        name: { type: String },
+        email: { type: String }
+      },
+      default: null
+      },
+    content: { type: String, required: true },
+    user:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+});
+
+noteSchema.set('toJSON', {
+  transform: (document, returnedObject: any) => {
+    // Keep your existing transformation logic here
+    returnedObject.id = returnedObject._id.toString();
+    delete returnedObject._id;
+    delete returnedObject.__v;
+  }
 });
 
 // Create and export the model

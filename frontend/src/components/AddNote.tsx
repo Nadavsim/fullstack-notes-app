@@ -10,49 +10,128 @@ export const AddNote = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState('');
 
+  // AI Assistant State ---
+  const [showAiInput, setShowAiInput] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
   const handleSave = async () => {
-    // Edge Case: Prevent saving empty notes
     if (!content.trim()) {
       alert("Note content cannot be empty.");
-      return; // Stop execution here
+      return; 
     }
     try {
-      // Send data to our local backend
       const res = await axios.post('http://localhost:3001/notes', {
         title: 'New Note',
         author: { name: 'User', email: 'user@example.com' },
         content: content
       });
       
-      // Update global state
       dispatch({ type: 'ADD_NOTE', payload: res.data });
       dispatch({ type: 'SET_NOTIFICATION', payload: 'Added a new note' });
       
-      // Reset local state
+      // Reset everything after save
       setIsEditing(false);
       setContent('');
+      setShowAiInput(false);
+      setAiPrompt('');
     } catch (error) {
       console.error('Error adding note:', error);
     }
   };
 
-  // The Exact HTML structure required by the assignment when clicked
+  // --- NEW: AI Submit Handler ---
+  const handleAiSubmit = async () => {
+    if (!aiPrompt.trim()) return;
+
+    setIsAiLoading(true);
+    try {
+      const response = await axios.post('http://localhost:3001/ai/complete', { 
+        prompt: aiPrompt 
+      });
+      
+      // Append the AI text to the existing content
+      setContent(prevContent => {
+        const separator = prevContent.trim() !== '' ? ' ' : '';
+        return prevContent + separator + response.data.text;
+      });
+      
+      // Close the AI input box after generation
+      setShowAiInput(false);
+      setAiPrompt('');
+    } catch (error) {
+      console.error("AI Generation failed:", error);
+      alert("Failed to generate AI text. Check your backend connection.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   if (isEditing) {
     return (
-      <div>
-        <input 
-          type="text" 
-          value={content} 
-          name="text_input_new_note" 
-          onChange={(e) => setContent(e.target.value)} 
-        />
-        <button name="text_input_save_new_note" onClick={handleSave}>Save</button>
-        <button name="text_input_cancel_new_note" onClick={() => setIsEditing(false)}>Cancel</button>
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+          <input 
+            type="text" 
+            value={content} 
+            name="text_input_new_note" 
+            onChange={(e) => setContent(e.target.value)} 
+            style={{ padding: '5px', width: '250px' }}
+          />
+          
+          {/* --- NEW: The AI Star Button --- */}
+          <button 
+            type="button"
+            data-testid="help_me_write"
+            onClick={() => setShowAiInput(!showAiInput)}
+            style={{ 
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1.2rem',
+              padding: '0 5px'
+            }}
+            title="Notes-based AI assistant"
+          >
+            ★
+          </button>
+        </div>
+
+        {/* --- NEW: The AI Input Field (Toggled by the Star) --- */}
+        {showAiInput && (
+          <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', backgroundColor: '#f0f8ff', padding: '10px', borderRadius: '4px' }}>
+            <input
+              type="text"
+              data-testid="help_me_write_prompt"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="E.g., Summarize the notes..."
+              disabled={isAiLoading}
+              style={{ flex: 1, padding: '5px' }}
+            />
+            <button 
+              type="button" 
+              data-testid="help_me_write_submit"
+              onClick={handleAiSubmit}
+              disabled={isAiLoading}
+            >
+              {isAiLoading ? 'Generating...' : 'Generate'}
+            </button>
+          </div>
+        )}
+
+        <div>
+          <button name="text_input_save_new_note" onClick={handleSave} style={{ marginRight: '5px' }}>Save</button>
+          <button name="text_input_cancel_new_note" onClick={() => {
+            setIsEditing(false);
+            setShowAiInput(false);
+            setAiPrompt('');
+          }}>Cancel</button>
+        </div>
       </div>
     );
   }
 
-  // The Exact HTML structure before clicking
   return (
     <button name="add_new_note" onClick={() => setIsEditing(true)}>
       Add new note

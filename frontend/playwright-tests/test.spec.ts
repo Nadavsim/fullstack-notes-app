@@ -1,81 +1,120 @@
 import { test, expect } from '@playwright/test';
 
-// Test 1: Create a new note
-test('Should create a new note successfully', async ({ page }) => {
-  // 1. Go to the React app
-  await page.goto('http://localhost:3000');
+// Force Playwright to wait up to 30 seconds for each test
+test.setTimeout(30000);
 
-  // 2. Click the "Add new note" button
+// 1. SEED THE DATABASE BEFORE THE BROWSER OPENS
+test.beforeAll(async () => {
+  try {
+    // Ping the backend directly to create the test user
+    await fetch('http://localhost:3001/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Playwright Tester',
+        email: 'testuser1@mail.com',
+        username: 'playtestuser1',
+        password: '12345'
+      })
+    });
+    // Note: If the user already exists, your backend will reject this, 
+    // which is perfectly fine! We just need to ensure they are there.
+  } catch (error) {
+    console.log("Setup note: Backend might not be running or user exists.");
+  }
+});
+
+// 1. THIS RUNS BEFORE EVERY SINGLE TEST
+test.beforeEach(async ({ page }) => {
+  await page.goto('http://localhost:3000');
+  
+  // Log in so the app is unlocked for the tests
+  await page.click('[data-testid="go_to_login_button"]');
+  await page.fill('[data-testid="login_form_username"]', 'playtestuser1');
+  await page.fill('[data-testid="login_form_password"]', '12345'); 
+  await page.click('[data-testid="login_form_login"]');
+
+  // Wait for the login to complete
+  await page.locator('button[name="add_new_note"]').waitFor();
+});
+
+// ----------------------------------------------------
+// HW2 CARRY-OVER TESTS (Now they will work because we are logged in!)
+// ----------------------------------------------------
+
+test('Should create a new note successfully', async ({ page }) => {
   const addButton = page.locator('button[name="add_new_note"]');
   await addButton.click();
 
-  // 3. Verify the text input and buttons appeared
   const input = page.locator('input[name="text_input_new_note"]');
   await expect(input).toBeVisible();
-
-  // 4. Fill in the note content
   await input.fill('This is a TDD generated note');
 
-  // 5. Click the save button
   const saveButton = page.locator('button[name="text_input_save_new_note"]');
   await saveButton.click();
 
-  // 6. Verify the notification area updated correctly
   const notification = page.locator('.notification');
   await expect(notification).toHaveText('Added a new note');
 });
 
-// Test 2: Read notes
 test('Should read notes successfully', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-
-  // Verify that at least one note is rendered on the screen
-  // We look for elements with the class "note" (as defined in the HTML requirements)
   const notes = page.locator('.note');
-  
-  // Wait for the first note to be visible (meaning the fetch from the backend succeeded)
   await expect(notes.first()).toBeVisible();
   
-  // Verify that the count is greater than 0
   const count = await notes.count();
   expect(count).toBeGreaterThan(0);
 });
 
-// Test 3: Update a note
 test('Should update a note successfully', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-
-  // 1. Find the first Edit button and click it
   const editButton = page.locator('button[data-testid^="edit-"]').first();
   await expect(editButton).toBeVisible();
   await editButton.click();
 
-  // 2. Verify the textarea appears and fill it with new text
   const textarea = page.locator('textarea[data-testid^="text_input-"]').first();
   await expect(textarea).toBeVisible();
   await textarea.fill('This content has been updated via TDD!');
 
-  // 3. Click the Save button for the edited note
   const saveButton = page.locator('button[data-testid^="text_input_save-"]').first();
   await saveButton.click();
 
-  // 4. Verify the notification area updated exactly to the required text
   const notification = page.locator('.notification');
   await expect(notification).toHaveText('Note updated');
 });
 
-// Test 4: Delete a note
 test('Should delete a note successfully', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-
-  // 1. Wait for the notes to load from the server and locate the first delete button
   const deleteButton = page.locator('button[data-testid^="delete-"]').first();
   await expect(deleteButton).toBeVisible();
-
-  // 2. Click the delete button
   await deleteButton.click();
 
-  // 3. Verify the notification area updated exactly to the required text
   const notification = page.locator('.notification');
   await expect(notification).toHaveText('Note deleted');
+});
+
+// ----------------------------------------------------
+// HW3 NEW AI TEST
+// ----------------------------------------------------
+
+test('AI assistant generates text and appends to new note', async ({ page }) => {
+  // We are already logged in from the beforeEach block!
+  
+  // 1. Click the add_new_note button to open the new-note form
+  await page.click('button[name="add_new_note"]');
+
+  // 2. Click help_me_write (The AI Star Button)
+  await page.click('[data-testid="help_me_write"]');
+
+  // 3. Type a short prompt into help_me_write_prompt
+  await page.fill('[data-testid="help_me_write_prompt"]', 'Write a one sentence summary about the notes.');
+
+  // 4. Capture the note input locator
+  const noteInput = page.locator('input[name="text_input_new_note"]');
+  
+  // Verify the input is currently empty before we generate text
+  await expect(noteInput).toHaveValue('');
+
+  // 5. Click help_me_write_submit
+  await page.click('[data-testid="help_me_write_submit"]');
+
+  // 6. Assert that within 30 seconds the input grew non-empty
+  await expect(noteInput).not.toHaveValue('', { timeout: 30000 });
 });

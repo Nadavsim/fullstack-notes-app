@@ -1,8 +1,12 @@
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import notesRouter from './routes/notesRouter';
 import testRouter from './routes/testRouter'; // Import the test router
 import { requestLogger } from './middlewares/logger';
+import usersRouter from './routes/usersRouter';
+import loginRouter from './routes/loginRouter';
+import aiRouter from './routes/aiRouter';
 
 const app = express();
 
@@ -21,6 +25,9 @@ app.get('/health', (req: Request, res: Response) => {
 
 // --- Routes ---
 app.use('/notes', notesRouter);
+app.use('/ai', aiRouter);
+app.use('/users', usersRouter);
+app.use('/login', loginRouter);
 
 // Add the conditional dev route exactly as the assignment required
 if (process.env.NODE_ENV === 'dev') {

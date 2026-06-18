@@ -1,51 +1,44 @@
 import mongoose from 'mongoose';
-import fs from 'fs';
-import path from 'path';
+import Note from '../models/Note';
+import User from '../models/User';
 import dotenv from 'dotenv';
-// Ensure the path to the model matches your file structure
-import Note from '../models/Note'; 
+import path from 'path';
 
-// Load environment variables from the backend's .env file
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const seedDatabase = async () => {
-    try {
-        // Get the filename from the command line arguments (default: data1.json)
-        const fileName = process.argv[2] || 'data1.json';
-        
-        // Create the full path to the data directory located outside the backend folder
-        const filePath = path.join(__dirname, '../../data', fileName); 
+  try {
+    await mongoose.connect(process.env.MONGODB_CONNECTION_URL as string);
+    console.log('Connected to MongoDB');
 
-        // Check if the file actually exists
-        if (!fs.existsSync(filePath)) {
-            console.error(`Error: File not found at ${filePath}`);
-            process.exit(1);
-        }
-
-        // Read the file and parse it to JSON
-        const rawData = fs.readFileSync(filePath, 'utf-8');
-        const parsedData = JSON.parse(rawData);
-        
-        // Support both possible formats (direct array or an object with a 'notes' key)
-        const notesToInsert = parsedData.notes ? parsedData.notes : parsedData;
-
-        // Connect to the database
-        await mongoose.connect(process.env.MONGODB_CONNECTION_URL as string);
-        console.log('Connected to MongoDB.');
-
-        // Delete all existing notes
-        await Note.deleteMany({});
-        console.log('Cleared existing notes.');
-
-        // Insert the new notes
-        await Note.insertMany(notesToInsert);
-        console.log(`✅ Successfully seeded database with ${fileName}!`);
-
-        process.exit(0);
-    } catch (error) {
-        console.error('❌ Error seeding database:', error);
-        process.exit(1);
+    // Find the test user you created earlier to assign as the author
+    const user = await User.findOne({ username: 'testuser1' }); // Replace with your actual test username
+    if (!user) {
+      console.log('Please create a test user in the app first!');
+      process.exit(1);
     }
+
+    const dummyNotes = [];
+    for (let i = 1; i <= 50; i++) {
+      dummyNotes.push({
+        title: `Seeded Note ${i}`,
+        content: `This is the auto-generated content for note number ${i}. It helps test pagination and AI filtering!`,
+        author: {
+          name: user.name,
+          email: user.email,
+        },
+        user: user._id
+      });
+    }
+
+    await Note.insertMany(dummyNotes);
+    console.log('Successfully added 50 notes!');
+    
+    mongoose.connection.close();
+  } catch (error) {
+    console.error('Error seeding database:', error);
+    mongoose.connection.close();
+  }
 };
 
 seedDatabase();

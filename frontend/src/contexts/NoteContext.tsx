@@ -28,9 +28,9 @@ const noteReducer = (state: State, action: Action): State => {
     case 'SET_NOTIFICATION': 
       return { ...state, notification: action.payload };
     case 'DELETE_NOTE': 
-      return { ...state, notes: state.notes.filter((note) => note._id !== action.payload) };
+      return { ...state, notes: state.notes.filter((note) => note.id !== action.payload) };
     case 'UPDATE_NOTE': 
-      return { ...state, notes: state.notes.map((note) => (note._id === action.payload._id ? action.payload : note)) };
+      return { ...state, notes: state.notes.map((note) => (note.id === action.payload.id ? action.payload : note)) };
     default: 
       return state;
   }
