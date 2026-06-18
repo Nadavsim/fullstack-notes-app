@@ -10,9 +10,6 @@ backend/package-lock.json
 frontend/package-lock.json
 test-results/
 presumission_tests/
-!tsconfig.json
-!package.json
-*.json
 
 # note json files (explicitly forbidden by assignment)
 db.json
