@@ -153,7 +153,7 @@ const HomePage: React.FC<HomePageProps> = ({ token, user, onLogout }) => {
           </div>
         ) : (
           <div className="user-nav">
-            <span style={{ marginRight: '15px', fontWeight: 'bold' }}>Welcome, {user?.name}</span>
+            <span style={{color: '#334155', marginRight: '15px', fontWeight: 'bold' }}>Welcome, {user?.name}</span>
             <button data-testid="logout" onClick={onLogout}>
               Logout
             </button>

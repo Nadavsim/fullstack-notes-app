@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { NoteContext } from '../contexts/NoteContext';
 import axios from 'axios';
+import '../Portfolio.css';
 
 export const AddNote = () => {
   const context = useContext(NoteContext);
@@ -69,64 +70,62 @@ export const AddNote = () => {
 
   if (isEditing) {
     return (
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+      <div className="note-editor-card">
+        <div className="note-input-row">
           <input 
             type="text" 
             value={content} 
             name="text_input_new_note" 
             onChange={(e) => setContent(e.target.value)} 
-            style={{ padding: '5px', width: '250px' }}
+            className="premium-input"
+            placeholder="What's on your mind?"
           />
           
-          {/* --- NEW: The AI Star Button --- */}
           <button 
             type="button"
             data-testid="help_me_write"
             onClick={() => setShowAiInput(!showAiInput)}
-            style={{ 
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1.2rem',
-              padding: '0 5px'
-            }}
+            className="ai-trigger-btn"
             title="Notes-based AI assistant"
           >
             ★
           </button>
         </div>
 
-        {/* --- NEW: The AI Input Field (Toggled by the Star) --- */}
         {showAiInput && (
-          <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', backgroundColor: '#f0f8ff', padding: '10px', borderRadius: '4px' }}>
+          <div className="ai-prompt-panel large">
             <input
               type="text"
               data-testid="help_me_write_prompt"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="E.g., Summarize the notes..."
+              placeholder="Ask the AI to summarize or find notes..."
               disabled={isAiLoading}
-              style={{ flex: 1, padding: '5px' }}
+              className="ai-large-input"
             />
             <button 
               type="button" 
               data-testid="help_me_write_submit"
               onClick={handleAiSubmit}
               disabled={isAiLoading}
+              className="btn-primary ai-submit-btn"
             >
-              {isAiLoading ? 'Generating...' : 'Generate'}
+              {isAiLoading ? 'Generating...' : '✨ Generate'}
             </button>
           </div>
         )}
 
-        <div>
-          <button name="text_input_save_new_note" onClick={handleSave} style={{ marginRight: '5px' }}>Save</button>
+        <div className="button-group">
+          <button name="text_input_save_new_note" onClick={handleSave} className="btn-primary" style={{ marginTop: 0 }}>
+            Save
+          </button>
           <button name="text_input_cancel_new_note" onClick={() => {
             setIsEditing(false);
             setShowAiInput(false);
             setAiPrompt('');
-          }}>Cancel</button>
+          }} className="btn-secondary">
+            Cancel
+          </button>
         </div>
       </div>
     );
