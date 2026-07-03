@@ -132,6 +132,7 @@ interface HomePageProps {
 const HomePage: React.FC<HomePageProps> = ({ token, user, onLogout }) => {
   const [activePage, setActivePage] = useState(1);
   const { context, isLoading, error, totalPages } = useNotesData(activePage);
+  const [sanitizerEnabled, setSanitizerEnabled] = useState(true);
 
   if (!context) return null;
   const { state } = context;
@@ -139,8 +140,19 @@ const HomePage: React.FC<HomePageProps> = ({ token, user, onLogout }) => {
   return (
     <div>
       <h1>Web Dev Fun Facts</h1>
-      
-      {/* --- NEW: Navigation & Auth Header --- */}
+
+      {/* --- Add the Toggle Button --- */}
+      <div style={{ marginBottom: '15px', textAlign: 'center' }}>
+        <button 
+          data-testid="sanitizer_toggle" 
+          onClick={() => setSanitizerEnabled(!sanitizerEnabled)}
+          className="btn-secondary"
+        >
+          Sanitizer: {sanitizerEnabled ? 'ON' : 'OFF'}
+        </button>
+      </div>
+
+      {/* --- Navigation & Auth Header --- */}
       <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
         {!token ? (
           <div className="guest-nav">
@@ -186,10 +198,15 @@ const HomePage: React.FC<HomePageProps> = ({ token, user, onLogout }) => {
           <p style={{ textAlign: 'center' }}>No notes found for this page.</p>
         )}
         
-        {/* --- NEW: Passing currentUser down to the Note component --- */}
+        {/* --- Pass the state to the Note component --- */}
         {!isLoading && !error && state.notes.length > 0 && (
           state.notes.map((note) => (
-            <Note key={note.id} note={note} currentUser={user} />
+            <Note 
+              key={note.id} 
+              note={note} 
+              currentUser={user} 
+              sanitizerEnabled={sanitizerEnabled} 
+            />
           ))
         )}
       </div>

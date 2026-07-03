@@ -2,9 +2,11 @@ import { useState, useContext } from 'react';
 import type { Note as NoteType } from '../types';
 import { NoteContext } from '../contexts/NoteContext';
 import axios from 'axios';
+import { sanitizeHtml } from '../sanitizer';
 
 interface NoteProps {
   note: NoteType;
+  sanitizerEnabled: boolean;
   currentUser?: { 
     name: string;
     email: string;
@@ -13,7 +15,7 @@ interface NoteProps {
 }
 
 // 1. Destructure currentUser here
-const Note = ({ note, currentUser }: NoteProps) => {
+const Note = ({ note, currentUser, sanitizerEnabled }: NoteProps) => {
   const context = useContext(NoteContext);
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(note.content);
@@ -73,13 +75,16 @@ const Note = ({ note, currentUser }: NoteProps) => {
     </>
   );
 
+
+  const displayHtml = sanitizerEnabled ? sanitizeHtml(note.content) : note.content;
+
   // --- Main Render ---
   return (
     <div className="note" data-testid={note.id}>
       <h2>{note.title}</h2>
       {/* Fallback to 'Guest' if author is null */}
       <small>By {note.author?.name || 'Guest'}</small>
-      <p>{note.content}</p>
+      <div data-testid="note_body" dangerouslySetInnerHTML={{ __html: displayHtml }} />
 
       {/* 3. Wrap the action buttons so they only render for the owner */}
       {isOwner && (
