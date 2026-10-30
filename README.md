@@ -97,6 +97,11 @@ cd backend && npm test        # API tests (Jest)
 cd frontend && npm test       # end-to-end tests (Playwright)
 ```
 
-## Security exercise
+## Security exercise: stored XSS, attack and defense
 
-`attacker_server.js` is a small local server used in the course's security assignment to demonstrate how an XSS payload can send keystrokes to another origin, and why the sanitizer is needed. It is for learning and runs only on your own machine (`npm run attacker` in `backend/`).
+Part of the assignment was to attack the site and then defend it.
+
+- **Attack.** A note can store HTML, so a malicious note is a stored XSS payload: it runs in the browser of everyone who views it. `attacker_server.js` is the small local server the payload reports to. It logs the keystrokes the injected script captures, which land in `keylog.txt`, and it sets permissive CORS headers so the victim's browser accepts the cross-origin request. Start it with `npm run attacker` in `backend/`.
+- **Defense.** `frontend/src/sanitizer.ts` parses note content into a DOM and strips script-like tags and dangerous attributes before rendering. The app has a switch to turn it off, so you can watch the attack work and then watch the sanitizer stop it.
+
+This is a learning exercise and is meant to run only on your own machine.
