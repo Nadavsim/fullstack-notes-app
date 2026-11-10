@@ -6,7 +6,7 @@ export const createNewUser = async (username: string, name: string, email: strin
     // 1. Check if the username already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-        throw new AppError(400, 'USERNAME_TAKEN', 'expected `username` to be unique');
+        throw new AppError(409, 'USERNAME_TAKEN', 'expected `username` to be unique');
     }
 
     // 2. Hash the password securely

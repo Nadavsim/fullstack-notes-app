@@ -32,6 +32,12 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     // express.json() received malformed JSON
     status = 400;
     body = { error: 'Malformed JSON body', code: 'INVALID_JSON' };
+  } else if (err?.code === 11000) {
+    // MongoDB unique-index violation. This is the real guard against duplicates: the
+    // service's findOne check can be raced by two simultaneous requests, the index cannot.
+    const field = Object.keys(err.keyPattern ?? err.keyValue ?? {})[0] ?? 'value';
+    status = 409;
+    body = { error: `expected \`${field}\` to be unique`, code: 'DUPLICATE_KEY' };
   } else if (err?.name === 'CastError') {
     // Mongoose could not convert a value, e.g. a bad ObjectId in /notes/:id
     status = 400;
