@@ -91,7 +91,7 @@ request -> logger -> router -> requireAuth -> validate(zod) -> controller -> ser
 | Missing or invalid token | 401 | `UNAUTHORIZED` |
 | Wrong username or password | 401 | `INVALID_CREDENTIALS` |
 | Note, user or route not found | 404 | `NOT_FOUND` |
-| Username already taken | 400 | `USERNAME_TAKEN` |
+| Username already taken (also when two sign-ups race) | 409 | `USERNAME_TAKEN` / `DUPLICATE_KEY` |
 | Ollama unreachable / agent timeout | 502 / 504 | `AI_UNREACHABLE` / `AI_TIMEOUT` |
 | Anything unexpected | 500 | `INTERNAL_ERROR` (generic message, details only in the server log) |
 
@@ -103,11 +103,11 @@ request -> logger -> router -> requireAuth -> validate(zod) -> controller -> ser
 - **`AppError` separates expected errors from bugs.** Controllers and services `throw AppError.notFound(...)` and similar. Express 5 forwards rejected promises to the error handler, so controllers no longer need `try/catch`. Anything that is not an `AppError` is logged and returned as a generic 500, so internals never leak.
 - **Login validation does not enforce password rules**, so a failed login never reveals the password policy.
 - **Limits** (title 200, content 10,000, password 3 to 72 because bcrypt ignores bytes past 72) are sensible defaults, not product requirements.
-- **Behavior changes:** a malformed note id or index now gives a 400 (it was a 500), and `_page=abc` is now a 400 (it was silently page 1).
+- **Duplicates are decided by the database.** The `findOne` check in the user service only gives a friendly message in the common case. Two simultaneous sign-ups can both pass it, so the unique index is the real guard, and the error handler turns Mongo's duplicate-key error (code 11000) into a 409 instead of a 500.
+- **Behavior changes:** a duplicate username is now a 409 (it was a 400), a malformed note id or index now gives a 400 (it was a 500), and `_page=abc` is now a 400 (it was silently page 1).
 
 ### What I would improve
 
-- Return 409 for duplicate usernames by catching Mongo's duplicate-key error (code 11000). Today a sign-up race between the `findOne` check and `save` ends in a 500.
 - Check note ownership on edit and delete. Any logged-in user can currently change any note.
 - Escape the `/notes/filter` query before using it as a regex, to rule out regex-based slow queries.
 - Add a request id to every log line and error response, and use a structured logger instead of `console.error`.
