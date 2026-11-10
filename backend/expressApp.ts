@@ -1,5 +1,6 @@
 import 'dotenv/config';
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
+import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 import cors from 'cors';
 import notesRouter from './routes/notesRouter';
 import testRouter from './routes/testRouter'; // Import the test router
@@ -34,12 +35,8 @@ if (process.env.NODE_ENV === 'dev') {
   app.use('/test', testRouter);
 }
 
-// --- Error Handling ---
-// Single error handling middleware 
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.message); // Log to terminal for easier debugging
-  const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'Internal Server Error' });
-});
+// --- Error Handling (must stay last) ---
+app.use(notFoundHandler); // unknown route -> 404 in the standard shape
+app.use(errorHandler);    // the single place that formats every error
 
 export default app;

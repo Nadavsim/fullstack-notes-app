@@ -1,4 +1,5 @@
 // backend/services/aiService.ts
+import { AppError } from '../utils/AppError';
 
 const MAX_ROUND_TRIPS = 3;
 
@@ -37,15 +38,11 @@ export async function runAgent({ prompt }: { prompt: string }): Promise<{ text: 
       });
     } catch (error) {
       // If fetch fails completely (e.g., Ollama is off)
-      const err = new Error('Ollama is not reachable') as Error & { status?: number };
-      err.status = 502;
-      throw err;
+      throw new AppError(502, 'AI_UNREACHABLE', 'Bad Gateway - Ollama unreachable');
     }
 
     if (!r.ok) {
-      const err = new Error('Error from Ollama API') as Error & { status?: number };
-      err.status = 502;
-      throw err;
+      throw new AppError(502, 'AI_BAD_RESPONSE', 'Bad Gateway - Ollama returned an error');
     }
 
     const { message } = await r.json();
@@ -77,7 +74,5 @@ export async function runAgent({ prompt }: { prompt: string }): Promise<{ text: 
   }
 
   // 4. Safety net: If it loops 3 times without a final answer, cut it off
-  const err = new Error('Agent exceeded round-trip cap') as Error & { status?: number };
-  err.status = 504;
-  throw err;
+  throw new AppError(504, 'AI_TIMEOUT', 'Gateway Timeout - Agent looped too many times');
 }
