@@ -6,30 +6,32 @@ import {
 } from '../controllers/notesController';
 import { requireAuth } from '../middlewares/authMiddleware';
 import { filterNotes } from '../controllers/notesFilterController';
+import { validate } from '../middlewares/validate';
+import { noteBodySchema, idParamSchema, indexParamSchema, listQuerySchema, filterQuerySchema } from '../schemas/notesSchemas';
 
 const router = Router();
 
-router.get('/filter', filterNotes);
+router.get('/filter', validate({ query: filterQuerySchema }), filterNotes);
 
 // ==========================================
 // PUBLIC ROUTES (Anyone can view)
 // ==========================================
-router.get('/', getNotes);
-router.get('/by-index/:i', getNoteByIndex);
-router.get('/:id', getNoteById); // ID route must stay below specific string routes like 'by-index'
+router.get('/', validate({ query: listQuerySchema }), getNotes);
+router.get('/by-index/:i', validate({ params: indexParamSchema }), getNoteByIndex);
+router.get('/:id', validate({ params: idParamSchema }), getNoteById); // ID route must stay below specific string routes like 'by-index'
 
 
 // ==========================================
 // PROTECTED ROUTES (Require Token)
 // ==========================================
-router.post('/', requireAuth, createNote);
+router.post('/', requireAuth, validate({ body: noteBodySchema }), createNote);
 
 // Index-Based Updates (Protected)
-router.put('/by-index/:i', requireAuth, updateNoteByIndex);
-router.delete('/by-index/:i', requireAuth, deleteNoteByIndex);
+router.put('/by-index/:i', requireAuth, validate({ params: indexParamSchema, body: noteBodySchema }), updateNoteByIndex);
+router.delete('/by-index/:i', requireAuth, validate({ params: indexParamSchema }), deleteNoteByIndex);
 
 // ID-Based Updates (Protected)
-router.put('/:id', requireAuth, updateNote);
-router.delete('/:id', requireAuth, deleteNote);
+router.put('/:id', requireAuth, validate({ params: idParamSchema, body: noteBodySchema }), updateNote);
+router.delete('/:id', requireAuth, validate({ params: idParamSchema }), deleteNote);
 
 export default router;

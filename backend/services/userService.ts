@@ -1,11 +1,12 @@
 import bcrypt from 'bcrypt';
 import User from '../models/User';
+import { AppError } from '../utils/AppError';
 
 export const createNewUser = async (username: string, name: string, email: string, password: string) => {
     // 1. Check if the username already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-        throw new Error('expected `username` to be unique');
+        throw new AppError(400, 'USERNAME_TAKEN', 'expected `username` to be unique');
     }
 
     // 2. Hash the password securely

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { AppError } from '../utils/AppError';
 
 // We extend the standard Express Request to include our custom 'user' property
 export interface AuthRequest extends Request {user?: string | jwt.JwtPayload;}
@@ -24,10 +25,10 @@ export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction)
         next();
         } catch (error) {
         // Token is invalid or expired
-        res.status(401).json({ error: 'token invalid' });
+        next(AppError.unauthorized('token invalid'));
         }
     } else {
     // No token provided at all
-    res.status(401).json({ error: 'token missing' });
+    next(AppError.unauthorized('token missing'));
     }
 };

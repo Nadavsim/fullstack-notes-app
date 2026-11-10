@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import User from '../models/User';
+import { AppError } from '../utils/AppError';
 
 export const authenticateUser = async (username: string, password: string) => {
     // 1. Find the user in the database
@@ -10,7 +11,7 @@ export const authenticateUser = async (username: string, password: string) => {
     const passwordCorrect = user === null ? false : await bcrypt.compare(password, user.passwordHash);
 
     if (!(user && passwordCorrect)) {
-        throw new Error('invalid username or password');
+        throw new AppError(401, 'INVALID_CREDENTIALS', 'invalid username or password');
     }
 
     // 3. Prepare the payload to be saved inside the Token
