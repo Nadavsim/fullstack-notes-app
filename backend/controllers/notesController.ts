@@ -1,21 +1,20 @@
 import { Request, Response } from 'express';
-import { z } from 'zod';
 import * as notesService from '../services/notesService';
 import { AuthRequest } from '../middlewares/authMiddleware'; // Import the custom Request type
 import User from '../models/User'; // Import the User model
 import { AppError } from '../utils/AppError';
-import { listQuerySchema } from '../schemas/notesSchemas';
+import { ListQuery } from '../schemas/notesSchemas';
 
 // Input is already validated by the `validate` middleware (see routes/notesRouter.ts),
 // and errors are thrown as AppError so the central error handler formats them.
 
 export const getNotes = async (req: Request, res: Response): Promise<void> => {
   // req.query was replaced by the parsed (coerced + defaulted) values
-  const { _page: page, _per_page: requestedLimit } = req.query as unknown as z.infer<typeof listQuerySchema>;
+  const { _page: page, _per_page: requestedLimit, _sort, _order } = req.query as unknown as ListQuery;
   const limit = Math.min(requestedLimit, 10);
   const skip = (page - 1) * limit;
 
-  const { totalNotes, notes } = await notesService.getNotesFromDB(skip, limit);
+  const { totalNotes, notes } = await notesService.getNotesFromDB(skip, limit, { field: _sort, order: _order });
 
   res.set('X-Total-Count', totalNotes.toString());
   res.status(200).json(notes);

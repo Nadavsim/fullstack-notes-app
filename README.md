@@ -50,8 +50,8 @@ frontend/
 
 | Method | Route | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/notes` | no | List notes, one page at a time |
-| GET | `/notes/filter` | no | Substring search over notes |
+| GET | `/notes` | no | List notes, one page at a time, sortable (`_sort`, `_order`) |
+| GET | `/notes/filter` | no | Word search over note titles and content (text index) |
 | GET | `/notes/:id` | no | One note |
 | POST | `/notes` | yes | Create a note |
 | PUT / DELETE | `/notes/:id` | yes | Edit or delete a note |
@@ -109,11 +109,62 @@ request -> logger -> router -> requireAuth -> validate(zod) -> controller -> ser
 ### What I would improve
 
 - Check note ownership on edit and delete. Any logged-in user can currently change any note.
-- Escape the `/notes/filter` query before using it as a regex, to rule out regex-based slow queries.
 - Add a request id to every log line and error response, and use a structured logger instead of `console.error`.
 - Share the zod schemas with the frontend (or generate an OpenAPI spec) so forms and the API validate the same rules.
 - Replace the deprecated `{ new: true }` option in `findByIdAndUpdate` with `returnDocument: 'after'`.
 - Add a unit test for the error handler itself and cover the Ollama failure path with a mocked `fetch`.
+
+## Sorting and search indexes
+
+### Sorting `GET /notes`
+
+```
+GET /notes?_sort=title&_order=asc&_page=2&_per_page=10
+```
+
+| Parameter | Values | Default |
+| --- | --- | --- |
+| `_sort` | `createdAt`, `title` | `createdAt` |
+| `_order` | `asc`, `desc` | `desc` |
+
+The defaults keep the old behavior (newest first). Any other `_sort` or `_order` value is a 400 `VALIDATION_ERROR`.
+
+### Search `GET /notes/filter?query=...`
+
+Searches whole words in the title and content, best matches first, at most 10 results.
+
+- Case-insensitive, with stemming: `flamingos` finds `flamingo`.
+- Several words match any of them. `"exact phrase"` must appear as written. `-word` excludes notes containing that word.
+- It does **not** match parts of words: `flam` finds nothing.
+
+### Indexes (defined in `backend/models/Note.ts`)
+
+| Index | Keys | Serves |
+| --- | --- | --- |
+| `_id_` (built in) | `_id` | Sorting by `createdAt` |
+| `title_sort` | `{ title: 1, _id: 1 }` with a case-insensitive, number-aware collation | Sorting by `title`, both directions |
+| `notes_text` | text index on `title` (weight 5) and `content` (weight 1) | `/notes/filter` and the AI `filter_notes` tool |
+
+Mongoose creates them when the app connects. The tests in `backend/tests/sorting-search.test.ts` run `explain()` and fail if a query stops using its index.
+
+### Decisions
+
+- **`createdAt` is served by `_id`.** An ObjectId starts with its creation time, so sorting by `_id` is sorting by date, and every collection already has that index. The schema has no `createdAt` field, and adding one now would leave existing notes without it.
+- **Only allowed sort fields.** Sorting on a field with no index makes MongoDB sort the whole collection in memory, which gets slow and fails beyond about 100 MB. A 400 is better than a slow query.
+- **`_id` is always the last sort key.** Many notes share a title, and without a unique tie-breaker their order is not fixed, so a note could appear on two pages or on none.
+- **A collation on the title sort and its index.** Titles sort ignoring case, and `Note 9` comes before `Note 10`. The query must ask for the same collation as the index, or MongoDB ignores the index and sorts in memory. The `explain()` test checks this.
+- **A text index instead of a regex.** A regular index cannot speed up a case-insensitive "contains" regex, because the match can start anywhere in the string. A text index is used directly, ranks results by relevance, and no longer turns user input into a regex (which removed the slow-regex risk). The trade-off is word matching instead of substring matching. The AI tool description was updated to say so.
+- **Search now covers titles too**, with title matches weighted 5 times higher than content matches.
+- **The relevance sort is still an in-memory `SORT` stage**, but only over the matched notes, not the whole collection. A score is computed per query, so no index can store it.
+
+### What I would improve
+
+- **Keyset (cursor) pagination.** `skip` still walks past every skipped index entry, so page 1,000 reads about 10,000 entries. Paging with "after this title and `_id`" costs the same on every page.
+- **Partial-word search** (as-you-type) with Atlas Search autocomplete or n-grams, if users need `flam` to find `flamingo`.
+- **Create indexes in a deploy step** and turn off Mongoose `autoIndex` in production. Building an index on a large collection is expensive, and changing an existing index's options (for example the collation) needs a drop-and-rebuild migration.
+- **Use `estimatedDocumentCount()`** for the unfiltered `X-Total-Count`, which reads stored metadata instead of counting.
+- **Frontend sort control.** The page cache in `NoteContext` would need to be keyed by sort order, or cleared when it changes.
+- **Per-note search language.** The text index uses English stemming and stop words for every note.
 
 ## Running it locally
 
