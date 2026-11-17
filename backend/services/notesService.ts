@@ -1,12 +1,31 @@
-import Note, { INote } from '../models/Note';
+import { SortOrder } from 'mongoose';
+import Note, { INote, TITLE_COLLATION } from '../models/Note';
+import { ListQuery } from '../schemas/notesSchemas';
 
-// Fetch notes with pagination and sort by newest first
-export const getNotesFromDB = async (skip: number, limit: number) => {
+export interface NotesSort {
+    field: ListQuery['_sort'];
+    order: ListQuery['_order'];
+}
+
+// Turn the public sort options into a MongoDB sort object.
+// - "createdAt" is served by _id: an ObjectId starts with its creation time, so sorting
+//   by _id is sorting by creation date, using the index every collection already has.
+// - _id is always the last key, a unique tie-breaker. Without it, notes with the same
+//   title have no fixed order and could appear on two pages, or on none.
+export const buildSort = ({ field, order }: NotesSort): Record<string, SortOrder> => {
+    const dir: SortOrder = order === 'asc' ? 1 : -1;
+    if (field === 'title') return { title: dir, _id: dir };
+    return { _id: dir };
+};
+
+// Fetch one page of notes in the requested order (default: newest first)
+export const getNotesFromDB = async (skip: number, limit: number, sort: NotesSort = { field: 'createdAt', order: 'desc' }) => {
     const totalNotes = await Note.countDocuments();
-    const notes = await Note.find()
-    .sort({ _id: -1 }) // Requirement: newest first
-    .skip(skip)
-    .limit(limit);
+    const query = Note.find().sort(buildSort(sort)).skip(skip).limit(limit);
+    // The title sort must use the same collation as the title_sort index, or MongoDB
+    // ignores the index and falls back to an in-memory sort.
+    if (sort.field === 'title') query.collation(TITLE_COLLATION);
+    const notes = await query;
     return { totalNotes, notes };
 };
 

@@ -9,7 +9,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'filter_notes',
-      description: 'Search the notes collection by substring match on content. Returns up to 10 matches.',
+      description: 'Search notes by words in their title and content (whole words, case-insensitive, best matches first). Returns up to 10 matches.',
       parameters: {
         type: 'object',
         properties: { query: { type: 'string' } },

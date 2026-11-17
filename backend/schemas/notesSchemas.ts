@@ -25,11 +25,20 @@ export const indexParamSchema = z.object({
   i: z.coerce.number({ error: 'index must be a number' }).int('index must be an integer').min(0, 'index must be 0 or greater'),
 });
 
-// GET /notes?_page=2&_per_page=10  (both optional, defaults match the old behaviour)
+// Fields a client may sort by. Only fields backed by an index are allowed, so a
+// client can never force MongoDB into a slow in-memory sort of the whole collection.
+export const SORT_FIELDS = ['createdAt', 'title'] as const;
+
+// GET /notes?_page=2&_per_page=10&_sort=title&_order=asc  (all optional)
+// Defaults match the old behaviour: page 1, 10 per page, newest first.
 export const listQuerySchema = z.object({
   _page: z.coerce.number().int().min(1, '_page must be 1 or greater').default(1),
   _per_page: z.coerce.number().int().min(1, '_per_page must be 1 or greater').default(10),
+  _sort: z.enum(SORT_FIELDS, { error: `_sort must be one of: ${SORT_FIELDS.join(', ')}` }).default('createdAt'),
+  _order: z.enum(['asc', 'desc'], { error: '_order must be asc or desc' }).default('desc'),
 });
+
+export type ListQuery = z.infer<typeof listQuerySchema>;
 
 // GET /notes/filter?query=text
 export const filterQuerySchema = z.object({
